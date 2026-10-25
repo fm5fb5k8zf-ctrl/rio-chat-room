@@ -1,91 +1,88 @@
-const $ = (id) => document.getElementById(id);
-const messagesEl = $("messages");
-const input = $("messageInput");
-const sendBtn = $("sendBtn");
-const chatForm = $("chatForm");
-const loginCard = $("loginCard");
-const loginForm = $("loginForm");
-const loginError = $("loginError");
-const statusText = $("statusText");
-const memoryPanel = $("memoryPanel");
-const memoryInput = $("memoryInput");
-const STORAGE_MESSAGES = "rio_chat_messages_v1";
-const STORAGE_MEMORY = "rio_chat_memory_v1";
-let messages = [];
-let busy = false;
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#fbf1f6">
+  <title>月城凛央 · 专属聊天室</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="avatar">凛</div>
+      <div class="heading">
+        <h1>月城凛央</h1>
+        <div class="status" id="statusText">正在等待你</div>
+      </div>
+      <button class="icon-button" id="newChat" type="button" aria-label="开启新聊天">＋</button>
+      <button class="icon-button" id="settingsBtn" type="button" aria-label="角色记忆">♡</button>
+    </header>
 
-function timeNow(){ return new Intl.DateTimeFormat("zh-CN",{hour:"2-digit",minute:"2-digit",hour12:false}).format(new Date()); }
-function saveMessages(){ try { localStorage.setItem(STORAGE_MESSAGES, JSON.stringify(messages.slice(-100))); } catch {} }
-function renderMessage(msg, scroll=true){
-  const row = document.createElement("div");
-  row.className = `row ${msg.role}`;
-  const avatar = document.createElement("div"); avatar.className = "mini-avatar"; avatar.textContent = msg.role === "user" ? "â¡" : "å";
-  const wrap = document.createElement("div"); wrap.className = "bubble-wrap";
-  const name = document.createElement("div"); name.className = "name"; name.textContent = msg.role === "user" ? "ä½ " : "æååå¤®";
-  const bubble = document.createElement("div"); bubble.className = "bubble"; bubble.textContent = msg.content;
-  const stamp = document.createElement("div"); stamp.className = "time"; stamp.textContent = msg.time || "";
-  wrap.append(name,bubble,stamp); row.append(avatar,wrap); messagesEl.append(row);
-  if(scroll) row.scrollIntoView({behavior:"smooth",block:"end"});
-  return row;
-}
-function renderAll(){
-  messagesEl.replaceChildren();
-  if(!messages.length){
-    const welcome = document.createElement("div"); welcome.className="welcome";
-    welcome.innerHTML='<div class="ornament">â§ãâ¡ãâ§</div><h2>æ¬¢è¿åæ¥</h2><p>æååå¤®æ­£å¨ç­ä½ ã</p>';
-    messagesEl.append(welcome); return;
-  }
-  messages.forEach(m=>renderMessage(m,false));
-}
-function addMessage(role,content){
-  const msg={role,content,time:timeNow()};
-  messages.push(msg); renderMessage(msg); saveMessages(); return msg;
-}
-function typingRow(){
-  const row=document.createElement("div"); row.className="row assistant";
-  row.innerHTML='<div class="mini-avatar">å</div><div class="bubble-wrap"><div class="name">æååå¤®</div><div class="bubble"><span class="typing"><i></i><i></i><i></i></span></div></div>';
-  messagesEl.append(row); row.scrollIntoView({behavior:"smooth",block:"end"}); return row;
-}
-function setReady(ready){input.disabled=!ready;sendBtn.disabled=!ready||busy;statusText.textContent=ready?"å¨è¿éï¼å¬ä½ è¯´è¯":"è¯·åè§£éèå¤©å®¤";}
-async function checkStatus(){
-  try{
-    const r=await fetch("/api/status"); const s=await r.json();
-    if(s.authenticated){loginCard.classList.add("hidden");setReady(true);renderAll();}
-    else{loginCard.classList.remove("hidden");setReady(false);}
-    if(!s.configured) statusText.textContent="ç­å¾å®ææå¡å¨éç½®";
-  }catch{loginCard.classList.remove("hidden");loginError.textContent="æ æ³è¿æ¥æå¡å¨ï¼è¯·ç¨åéè¯ã";}
-}
-loginForm.addEventListener("submit",async e=>{
-  e.preventDefault();loginError.textContent="";
-  try{
-    const r=await fetch("/api/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({password:$("passwordInput").value})});
-    const data=await r.json();if(!r.ok)throw new Error(data.error||"ç»å½å¤±è´¥");
-    $("passwordInput").value="";await checkStatus();
-  }catch(err){loginError.textContent=err.message;}
-});
-chatForm.addEventListener("submit",async e=>{
-  e.preventDefault();const text=input.value.trim();if(!text||busy)return;
-  addMessage("user",text);input.value="";input.style.height="auto";busy=true;sendBtn.disabled=true;
-  const typing=typingRow();
-  try{
-    const history=messages.slice(-30).map(({role,content})=>({role,content}));
-    const r=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({messages:history,memory:localStorage.getItem(STORAGE_MEMORY)||""})});
-    const data=await r.json();if(!r.ok)throw new Error(data.error||"åå¤å¤±è´¥");
-    typing.remove();addMessage("assistant",data.reply||"ï¼åå¤®è½»è½»ç¨äºç¨ç¼ãï¼");
-  }catch(err){typing.remove();addMessage("assistant",`ï¼åå¤®ç¥æ¾æ­æå°ççä½ ãï¼\n${err.message}`);}
-  finally{busy=false;sendBtn.disabled=input.disabled;}
-});
-input.addEventListener("input",()=>{input.style.height="auto";input.style.height=Math.min(input.scrollHeight,130)+"px";});
-input.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();chatForm.requestSubmit();}});
-$("newChat").addEventListener("click",()=>{
-  if(confirm("å¼å¯æ°èå¤©ï¼å½åçæ¬åªä¿å­å½åè¿æ®µèå¤©ï¼å¼å¯åå½åè®°å½ä¼è¢«æ¿æ¢ãå»ºè®®åå¤å¶æ³ä¿ççåå®¹ã")){
-    messages=[];saveMessages();renderAll();
-    addMessage("assistant","å§å§ï¼æ¬¢è¿åæ¥ãæä»¬ä»å¤©ä»åªéèèµ·å¢ï¼");
-  }
-});
-$("settingsBtn").addEventListener("click",()=>{memoryInput.value=localStorage.getItem(STORAGE_MEMORY)||"";memoryPanel.classList.remove("hidden");});
-$("closeMemory").addEventListener("click",()=>memoryPanel.classList.add("hidden"));
-$("saveMemory").addEventListener("click",()=>{localStorage.setItem(STORAGE_MEMORY,memoryInput.value.trim());memoryPanel.classList.add("hidden");});
-$("clearMemory").addEventListener("click",()=>{memoryInput.value="";localStorage.removeItem(STORAGE_MEMORY);});
-try{messages=JSON.parse(localStorage.getItem(STORAGE_MESSAGES)||"[]");if(!Array.isArray(messages))messages=[];}catch{messages=[];}
-checkStatus();
+    <main id="messages">
+      <div class="welcome">
+        <div class="ornament">✧　♡　✧</div>
+        <h2>欢迎回来</h2>
+        <p>月城凛央正在等你。</p>
+      </div>
+    </main>
+
+    <section class="login-card" id="loginCard">
+      <div class="big-heart">♡</div>
+      <h2>只属于你的私人聊天室</h2>
+      <p>请输入你部署时设置的聊天室密码。</p>
+
+      <form id="loginForm">
+        <input
+          id="passwordInput"
+          type="password"
+          placeholder="请输入聊天室密码"
+          autocomplete="current-password"
+          required
+        >
+        <button class="primary" type="submit">进入聊天室</button>
+        <div class="error" id="loginError" role="alert"></div>
+      </form>
+    </section>
+
+    <section class="composer-wrap">
+      <p class="hint">Enter 发送 · Shift + Enter 换行</p>
+      <form class="composer" id="chatForm">
+        <textarea
+          id="messageInput"
+          rows="1"
+          placeholder="和凛央说些什么吧……"
+          aria-label="聊天消息"
+          maxlength="5000"
+          disabled
+        ></textarea>
+        <button class="send" id="sendBtn" type="submit" disabled aria-label="发送消息">↑</button>
+      </form>
+      <div class="foot">✧ 私人角色聊天室 · 对话记录保存在当前浏览器 ✧</div>
+    </section>
+
+    <section class="memory-panel hidden" id="memoryPanel">
+      <div class="panel-head">
+        <h2>♡ 角色记忆</h2>
+        <button class="close" id="closeMemory" type="button" aria-label="关闭">×</button>
+      </div>
+      <p>把希望凛央在后续聊天中记住的背景写在这里。</p>
+      <textarea
+        id="memoryInput"
+        rows="6"
+        placeholder="例如：我们第一次见面是在……"
+      ></textarea>
+      <div class="panel-actions">
+        <button class="secondary" id="clearMemory" type="button">清空保存记忆</button>
+        <button class="primary" id="saveMemory" type="button">保存记忆</button>
+      </div>
+      <small>
+        记忆保存在当前浏览器，并会随聊天请求发送给 AI 服务。
+        请勿填写密码、证件号码等敏感信息。
+      </small>
+    </section>
+  </div>
+
+  <script src="/app.js" defer></script>
+</body>
+</html>
