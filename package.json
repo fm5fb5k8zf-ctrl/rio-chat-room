@@ -1,0 +1,18 @@
+{
+  "name": "tsukishiro-rio-chat",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A private, mobile-friendly otome-style AI chat starter",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "cookie-parser": "^1.4.7",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
+    "openai": "^4.85.0"
+  }
+}
